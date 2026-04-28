@@ -127,6 +127,33 @@ map_2024 <- ggplot() +
 # ggsave
 ggsave("output/exposed_lakes_2024_map.png", map_2024, width = 12, height = 8)
 
+# 5. Count of conflicts by country and year ----
+conflict_counts <- conflict %>%
+  group_by(year, country) %>%
+  summarise(conflict_count = n(), .groups = "drop")
+# nice table for lakes near conflicts 2024
+lakes_near_conflict_2024 <- exposed_lakes_2024 %>%
+  st_drop_geometry() %>%
+  group_by(country) %>%
+  summarise(lakes_near_conflict = n(), .groups = "drop") %>%
+  arrange(desc(lakes_near_conflict)) %>%
+  slice_head(n = 10)
 
+# unique lake counts per country
+lakes_near_conflict_2024 <- exposed_lakes_2024 %>%
+  st_drop_geometry() %>%
+  distinct(D_hylak_id, .keep_all = TRUE) %>%
+  group_by(country) %>%
+  summarise(unique_lakes_exposed = n(), .groups = "drop") %>%
+  arrange(desc(unique_lakes_exposed)) %>%
+  slice_head(n = 10)
+
+# conflict events per country
+conflict_event_counts_2024 <- conflict_sf %>%
+  filter(year == 2024) %>%
+  st_drop_geometry() %>%
+  group_by(country) %>%
+  summarise(event_count = n(), .groups = "drop") %>%
+  arrange(desc(event_count))
 
 
