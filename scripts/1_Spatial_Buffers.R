@@ -148,7 +148,7 @@ lakes_near_conflict_2024 <- exposed_lakes_2024 %>%
 # unique lake counts per country
 lakes_near_conflict_2024 <- exposed_lakes_2024 %>%
   st_drop_geometry() %>%
-  distinct(D_hylak_id, .keep_all = TRUE) %>%
+  distinct(Hylak_id, .keep_all = TRUE) %>%
   group_by(country) %>%
   summarise(unique_lakes_exposed = n(), .groups = "drop") %>%
   arrange(desc(unique_lakes_exposed)) %>%

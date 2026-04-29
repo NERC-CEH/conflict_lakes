@@ -16,15 +16,20 @@ library(graticule)
 load("data/globo_topo_poly.rda")
 conflict <- read_csv("data/GEDEvent_v25_1.csv")
 
+# read in all hydrolake points (huge)
+hydro_gdb <- "data/HydroLAKES_points_v10_shp"
+st_layers(hydro_gdb)
+lake_centroids <- st_read(hydro_gdb, layer = "HydroLAKES_points_v10")
+
 # create world tags to look at global regions
 world_tags <- ne_countries(scale = "medium", returnclass = "sf") %>%
   select(name_long, region_un, continent) %>%
   st_transform(54009)
 
 # calcutlate lake centroids
-lake_centroids_tagged <- globo_topo_poly %>%
+lake_centroids_tagged <- lake_centroids %>%
   st_make_valid() %>%
-  st_centroid() %>%
+  #st_centroid() %>%
   st_transform(54009) %>%
   st_join(world_tags) %>%
   rename(country = name_long, region = region_un)
@@ -66,7 +71,7 @@ regional_exposure <- lake_exposure_long %>%
     .groups = "drop")
 
 # 5. Non-exposed lakes in countries 'at war' ----
-# ID countries with >= 25 armed conflict-related deaths (UCDP standard)
+#  >= 25 d deaths (UCDP standard def for war)
 war_countries <- conflict %>%
   group_by(year, country) %>%
   summarise(total_deaths = sum(best), .groups = "drop") %>%
@@ -150,6 +155,22 @@ lake_centroids_tagged <- lake_centroids_tagged %>%
 # ggsave
 ggsave("output/regional_exposure_plot.png", regional_exposure_plot, width =
        10, height = 6)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
