@@ -15,14 +15,14 @@ library(broom)
 # 2. Load Data ----
 load("data/globo_topo_poly.rda")
 lpd <- read_csv("data/LPD_Public_2024.csv")
-sr_raster <- rast("data/IUCN_Freshwater_SR_2024.tif")
+sr_raster <- rast("data/Combined_SR_2025.tif")
 
 world_tags <- ne_countries(scale = "medium", returnclass = "sf") %>%
   select(name_long, region_un, continent) %>%
   st_transform(54009)
-lake_centroids_tagged <- globo_topo_poly %>%
+lake_centroids_tagged <- lake_centroids_tagged %>%
   st_make_valid() %>%
-  st_centroid() %>%
+  #st_centroid() %>%
   st_transform(54009) %>%
   st_join(world_tags)
 lake_centroids_tagged$species_richness <- terra::extract(sr_raster, st_transform(lake_centroids_tagged, st_crs(sr_raster)))[,2]
@@ -64,6 +64,11 @@ ggplot(rainfall_df, aes(x = exposure_cat, y = species_richness, fill = exposure_
   scale_fill_manual(values = c("10km Buffer"="#67000d", "25km Buffer"="#a50f15", "50km Buffer"="#ef3b2c", "Country at War"="#fc8d59")) +
   labs(title = "Species Richness in Conflict Zones (2024)", x = "Intensity", y = "Richness") +
   theme_minimal() + theme(legend.position = "none")
+
+lake_metadata <- lake_centroids_tagged %>%
+  st_drop_geometry() %>%
+  select(Hylak_id, lake_country = name_long, species_richness) %>%
+  distinct(Hylak_id, .keep_all = TRUE)
 
 # 4.  Ukraine ----
 ukraine_data <- lake_exposure_long %>%
