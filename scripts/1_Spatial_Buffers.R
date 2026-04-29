@@ -16,6 +16,13 @@ library(rnaturalearthdata)
 load("data/globo_topo_poly.rda") # catchment polygons
 conflict <- read_csv("data/GEDEvent_v25_1.csv")
 
+# read in all hydrolake points (huge)
+hydro_gdb <- "data/HydroLAKES_points_v10_shp"
+st_layers(hydro_gdb)
+lake_centroids <- st_read(hydro_gdb, layer = "HydroLAKES_points_v10")
+# remove globo_topo_poly
+rm(globo_topo_poly)
+
 # 3. Pre-process data ----
 # convert conflict to sf points
 conflict_sf <- conflict %>%
@@ -24,9 +31,8 @@ conflict_sf <- conflict %>%
   st_transform(54009)
 
 # calculate centroids
-lake_centroids <- globo_topo_poly %>%
+lake_centroids <- lake_centroids %>%
   st_make_valid() %>%
-  st_centroid() %>%
   st_transform(54009)
 
 
@@ -65,19 +71,19 @@ for (yr in anchor_years) {
 }
 
 # remove x = 2025
-exposure_ts <- exposure_ts %>% filter(year < 2025)
+#exposure_ts <- exposure_ts %>% filter(year < 2025)
 
 # 4. Map and Exposure Plot ----
 exposure_ts <- bind_rows(results_list)
 
 # time series for sensitivity
-exposure_buffer <- ggplot(exposure_ts, aes(x = year, y = exposure_pct, color = as.factor(buffer_km))) +
-  geom_line(size = 1) +
+(exposure_buffer <- ggplot(exposure_ts, aes(x = year, y = exposure_pct, color = as.factor(buffer_km))) +
+  geom_line(linewidth = 1) +
   geom_point() +
   labs(title = "Global Lake Exposure to Conflict (2000-2024)",
        x = "Year", y = "% of Global lakes exposed to conflict",
        color = "Buffer distance of lake centroid to conflict (km)") +
-  theme_minimal()
+  theme_minimal())
 
 
 # save plot
@@ -106,7 +112,7 @@ exposed_lakes_2024 <- st_join(lake_centroids, conflict_2024_buffers, left = FALS
   ))
 
 # map plot
-map_2024 <- ggplot() +
+(map_2024 <- ggplot() +
   geom_sf(data = world, fill = "white", color = "gray80", size = 0.2) +
   geom_sf(data = exposed_lakes_2024,
           aes(color = violence_label, size = best),
@@ -122,7 +128,7 @@ map_2024 <- ggplot() +
        size = "Fatality Estimate") +
   theme_minimal() +
   theme(panel.background = element_rect(fill = "aliceblue", color = NA),
-    legend.position = "bottom")
+    legend.position = "bottom"))
 
 # ggsave
 ggsave("output/exposed_lakes_2024_map.png", map_2024, width = 12, height = 8)
