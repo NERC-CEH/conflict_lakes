@@ -28,7 +28,10 @@ lake_centroids_tagged <- lake_centroids_tagged %>%
 lake_centroids_tagged$species_richness <- terra::extract(sr_raster, st_transform(lake_centroids_tagged, st_crs(sr_raster)))[,2]
 
 #3.  Species Richness icun  ----
-
+conflict_sf <- conflict %>%
+  filter(!is.na(latitude), !is.na(longitude)) %>%
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
+  st_transform(54009)
 conflict_2024 <- conflict_sf %>% filter(year == 2024)
 buf_10 <- st_union(st_buffer(conflict_2024, 10000))
 buf_25 <- st_union(st_buffer(conflict_2024, 25000))
@@ -56,14 +59,85 @@ rainfall_df <- lake_centroids_tagged %>%
 rainfall_df$exposure_cat <- factor(rainfall_df$exposure_cat,
                                    levels = c("Country at War", "50km Buffer", "25km Buffer", "10km Buffer"))
 
-ggplot(rainfall_df, aes(x = exposure_cat, y = species_richness, fill = exposure_cat)) +
-  stat_halfeye(adjust = .5, width = .6, .width = 0, justification = -.3, point_colour = NA) +
-  geom_point(size = 0.5, alpha = .1, position = position_jitter(width = .15)) +
+rainfall_exposure <- ggplot(rainfall_df, aes(x = exposure_cat, y = species_richness, fill = exposure_cat)) +
+  ggdist::stat_halfeye(adjust = .5, width = .6, .width = 0, justification = -.3, point_colour = NA) +
+  geom_point(size = 0.5, alpha = .05, position = position_jitter(width = .15)) +
   geom_boxplot(width = .1, outlier.shape = NA, alpha = 0.5) +
   coord_flip() +
   scale_fill_manual(values = c("10km Buffer"="#67000d", "25km Buffer"="#a50f15", "50km Buffer"="#ef3b2c", "Country at War"="#fc8d59")) +
   labs(title = "Species Richness in Conflict Zones (2024)", x = "Intensity", y = "Richness") +
   theme_minimal() + theme(legend.position = "none")
+
+
+#ggsave
+ggsave("output/species_richness_exposure.png", rainfall_exposure, width = 10, height = 6)
+
+# make the plot factors mutually exclusive
+rainfall_df <- lake_centroids_tagged %>%
+  mutate(
+    d10 = as.logical(st_intersects(., buf_10, sparse = FALSE)),
+    d25 = as.logical(st_intersects(., buf_25, sparse = FALSE)),
+    d50 = as.logical(st_intersects(., buf_50, sparse = FALSE))
+  ) %>%
+  st_drop_geometry() %>%
+  mutate(exposure_cat = case_when(
+    d10 ~ "10km Buffer",
+    d25 ~ "25km Buffer",
+    d50 ~ "50km Buffer",
+    country %in% war_countries_2024 ~ "Country at War",
+    TRUE ~ NA_character_)) %>%
+  filter(!is.na(exposure_cat), !is.na(species_richness))
+
+rainfall_df$exposure_cat <- factor(rainfall_df$exposure_cat,
+                                   levels = c("Country at War", "50km Buffer", "25km Buffer", "10km Buffer"))
+
+rainfall_exposure2 <- ggplot(rainfall_df, aes(x = exposure_cat, y = species_richness, fill = exposure_cat, color = exposure_cat)) +
+  # Distribution (Fill only)
+  ggdist::stat_halfeye(
+    adjust = .5,
+    width = .6,
+    .width = 0,
+    justification = -.3,
+    point_colour = NA
+  ) +
+  # Points (Now mapped to color)
+  geom_point(
+    size = 0.5,
+    alpha = .1, # Increased slightly so color is visible at small size
+    position = position_jitter(width = .15)
+  ) +
+  # Boxplot (Fill and Color)
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5,
+    color = "black" # Keeping box outlines black for structural clarity, or remove this line to make them match
+  ) +
+  coord_flip() +
+  # Apply colors to both fill and color aesthetics
+  scale_fill_manual(values = c(
+    "10km Buffer" = "#67000d",
+    "25km Buffer" = "#a50f15",
+    "50km Buffer" = "#ef3b2c",
+    "Country at War" = "#fc8d59"
+  )) +
+  scale_color_manual(values = c(
+    "10km Buffer" = "#67000d",
+    "25km Buffer" = "#a50f15",
+    "50km Buffer" = "#ef3b2c",
+    "Country at War" = "#fc8d59"
+  )) +
+  labs(x = "Intensity", y = "Richness") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+print(rainfall_exposure2)
+
+
+#ggsave
+ggsave("output/species_richness_exposure_mutual.png", rainfall_exposure2, width = 10, height = 6)
+
+
 
 lake_metadata <- lake_centroids_tagged %>%
   st_drop_geometry() %>%
